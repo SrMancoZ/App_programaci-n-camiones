@@ -17,14 +17,14 @@ dias = list(range(7))
 st.title("Optimización de Despacho de Camiones")
 
 # Entrada de datos
-st.header("1. Introduce los datos necesarios")
+st.header("1. Datos necesarios")
 
 # Input: Demanda diaria
 st.subheader("Demanda diaria por pallets")
 demanda_diaria_pallets = {}
 for centro in centros_distribucion.keys():
     demanda_diaria_pallets[centro] = st.text_input(
-        f"Demanda semanal para {centro} (separada por comas, ejemplo: 100,200,300,400,500,0,0):",
+        f"Demanda semanal para {centro} (separada por comas, Ej: 100,200,300,400,500,0,0):",
         placeholder="Introduce 7 valores separados por comas"
     )
 
@@ -44,7 +44,7 @@ horarios_ocupados_diarios = {}
 for dia in dias:
     horarios_ocupados_diarios[dia] = st.text_input(
         f"Horarios ocupados para el día {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][dia]} (separados por comas):",
-        placeholder="Ejemplo: 10,11,12"
+        placeholder="Ej: 10,11,12,15"
     )
 
 # Botón para ejecutar el modelo
