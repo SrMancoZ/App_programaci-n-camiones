@@ -17,14 +17,14 @@ dias = list(range(7))
 st.title("Optimización de Despacho de Camiones")
 
 # Entrada de datos
-st.header("1. Datos necesarios")
+st.header("1. Introduce los datos necesarios")
 
 # Input: Demanda diaria
 st.subheader("Demanda diaria por pallets")
 demanda_diaria_pallets = {}
 for centro in centros_distribucion.keys():
     demanda_diaria_pallets[centro] = st.text_input(
-        f"Demanda semanal para {centro} (separada por comas, Ej: 100,200,300,400,500,0,0):",
+        f"Demanda semanal para {centro} (separada por comas, ejemplo: 100,200,300,400,500,0,0):",
         placeholder="Introduce 7 valores separados por comas"
     )
 
@@ -44,7 +44,7 @@ horarios_ocupados_diarios = {}
 for dia in dias:
     horarios_ocupados_diarios[dia] = st.text_input(
         f"Horarios ocupados para el día {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][dia]} (separados por comas):",
-        placeholder="Ej: 10,11,12,15"
+        placeholder="Ejemplo: 10,11,12"
     )
 
 # Botón para ejecutar el modelo
@@ -57,6 +57,7 @@ if st.button("Ejecutar modelo de optimización"):
         # Crear el modelo
         modelo = pl.LpProblem("Optimización_Despacho_Camiones", pl.LpMinimize)
         x = pl.LpVariable.dicts("Camiones_pedidos", [(t, d) for t in horarios for d in dias], 0, None, pl.LpInteger)
+        y = pl.LpVariable.dicts("Camiones_asignados", centros_distribucion, 0, None, pl.LpInteger)
         retraso = pl.LpVariable.dicts("Retraso", [(t, d) for t in horarios for d in dias], 0, None, pl.LpInteger)
 
         # Función objetivo
@@ -64,18 +65,45 @@ if st.button("Ejecutar modelo de optimización"):
                   pl.lpSum([coste_por_camion * x[(t, d)] for t in horarios for d in dias])
 
         # Restricciones
+        # 1. Cumplir con la producción de pallets para cada centro diariamente (incluyendo pallets pendientes para el lunes)
         for j in centros_distribucion:
             for d in dias:
-                demanda = demanda_diaria_pallets[j][d] + (pallets_pendientes[j] if d == 0 else 0)
-                modelo += pl.lpSum([x[(t, d)] * capacidad_camion for t in horarios]) >= demanda
+                demanda = demanda_diaria_pallets[j][d]
+                if d == 0:  # Lunes
+                    demanda += pallets_pendientes[j]
+                modelo += y[j] * capacidad_camion >= demanda, f"Satisfacer_demanda_centro_{j}_dia_{d}"
 
+        # 2. Restricción de horarios ocupados por día
         for d in dias:
             for t in horarios_ocupados_diarios[d]:
-                modelo += x[(t, d)] == 0
+                modelo += x[(t, d)] == 0, f"Horario_ocupado_{t}_dia_{d}"
 
+        # 3. Restricción de capacidad de 2 camiones por hora (con flexibilidad para lunes)
         for d in dias:
             for t in horarios:
-                modelo += x[(t, d)] <= capacidad_horaria
+                if d == 0:  # Lunes
+                    modelo += x[(t, d)] <= capacidad_horaria + 2, f"Capacidad_max_por_hora_flexible_{t}_dia_{d}"
+                else:
+                    modelo += x[(t, d)] <= capacidad_horaria, f"Capacidad_max_por_hora_{t}_dia_{d}"
+
+        # 4. Restricción de horas alternas
+        for d in dias:
+            for t in range(len(horarios) - 2):
+                modelo += x[(t, d)] + x[(t + 1, d)] <= capacidad_horaria, f"Restriccion_horas_alternas_{t}_dia_{d}"
+
+        # 5. Satisfacer la demanda diaria de pallets entre todos los centros
+        for d in dias:
+            modelo += pl.lpSum([x[(t, d)] * capacidad_camion for t in horarios]) >= \
+                      sum(demanda_diaria_pallets[j][d] for j in centros_distribucion), f"Satisfacer_demanda_total_dia_{d}"
+
+        # 6. Vincular el número total de camiones pedidos con los camiones asignados a centros de distribución
+        modelo += pl.lpSum([x[(t, d)] for t in horarios for d in dias]) == \
+                  pl.lpSum([y[j] for j in centros_distribucion]), "Igualar_cantidad_pedidos_asignados"
+
+        # 7. Restricción de probabilidad de retraso según el día y la hora
+        for d in dias:
+            for t in horarios:
+                modelo += retraso[(t, d)] >= prob_retraso[t][d] * x[(t, d)], f"Retraso_por_probabilidad_{t}_dia_{d}"
 
         # Resolver el modelo
         modelo.solve()
@@ -96,11 +124,6 @@ if st.button("Ejecutar modelo de optimización"):
         plt.xlabel("Días de la Semana")
         st.pyplot(plt)
 
-        # Descargar reporte
-        st.header("3. Descarga el reporte de retrasos")
-        retrasos_df = pd.DataFrame([(t, d, retraso[(t, d)].varValue) for t in horarios for d in dias],
-                                   columns=["Hora", "Día", "Retraso"])
-        retrasos_csv = retrasos_df.to_csv(index=False)
-        st.download_button("Descargar reporte de retrasos", data=retrasos_csv, file_name="reporte_retrasos.csv")
     except Exception as e:
         st.error(f"Error: {e}")
+
