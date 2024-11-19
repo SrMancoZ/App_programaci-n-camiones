@@ -1,19 +1,12 @@
 # Optimización de Despacho de Camiones
+Esta aplicación permite optimizar el despacho de camiones para dos escenarios:
+- **Versión semanal**: Planifica la semana completa.
+- **Versión diaria**: Trabaja con un solo día, seleccionable por el usuario.
 
-Esta aplicación ayuda a optimizar el despacho de camiones basado en la demanda diaria de pallets, pallets pendientes y horarios ocupados.
+## Cómo funciona
+1. Selecciona la versión que deseas utilizar.
+2. Introduce los datos requeridos y ejecuta el modelo.
+3. Visualiza los resultados en un calendario y descarga el reporte de retrasos.
 
-## Instalación
-1. Clona este repositorio.
-2. Instala las dependencias con `pip install -r requirements.txt`.
-
-## Uso
-1. Ejecuta la aplicación con `streamlit run app.py`.
-2. Introduce los datos necesarios y genera el gráfico y reporte.
-
-## Despliegue en Streamlit Cloud
-Sigue estas instrucciones:
-1. Crea un repositorio en GitHub y sube estos archivos.
-2. Vincula tu cuenta de GitHub con [Streamlit Cloud](https://streamlit.io/).
-3. Despliega la aplicación seleccionando este repositorio.
-
-¡Disfruta de la optimización!
+## Despliegue
+Desarrollado con Streamlit y disponible en la nube para facilitar su acceso.
